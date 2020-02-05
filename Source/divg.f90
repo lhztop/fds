@@ -159,6 +159,8 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
       ! Compute rho*D del Z
 
       !$OMP PARALLEL DO PRIVATE(DZDX, DZDY, DZDZ) SCHEDULE (STATIC)
+      !$acc data copyin(KBAR,JBAR,IBAR,ZZP,RDXN,RHO_D,RDYN,RDZN) copyout(RHO_D_DZDX,RHO_D_DZDY,RHO_D_DZDZ)
+      !$acc kernels
       DO K=0,KBAR
          DO J=0,JBAR
             DO I=0,IBAR
@@ -171,6 +173,8 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
             ENDDO
          ENDDO
       ENDDO
+      !$acc end kernels
+      !$acc end data
       !$OMP END PARALLEL DO
 
       ! Tensor diffusivity model (experimental)
@@ -243,6 +247,8 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
    IF (SIM_MODE==DNS_MODE .OR. SIM_MODE==LES_MODE) THEN
 
       !$OMP PARALLEL DO PRIVATE(N) SCHEDULE(STATIC)
+      !$acc data copyin(KBAR,JBAR,N_TRACKED_SPECIES,IBAR) copy(RHO_D_DZDX,RHO_D_DZDY,RHO_D_DZDZ)
+      !$acc kernels
       DO K=0,KBAR
          DO J=0,JBAR
             DO I=0,IBAR
@@ -257,6 +263,8 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
             ENDDO
          ENDDO
       ENDDO
+      !$acc end kernels
+      !$acc end data
       !$OMP END PARALLEL DO
 
    ENDIF
@@ -294,6 +302,8 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
       H_RHO_D_DZDZ => WORK7
 
       !$OMP PARALLEL DO PRIVATE(TMP_G, H_S) SCHEDULE(guided)
+      !$acc data copyin(KBAR,JBAR,IBAR,TMP,RHO_D_DZDX,RHO_D_DZDY,RHO_D_DZDZ), copyout(H_RHO_D_DZDX,H_RHO_D_DZDY,H_RHO_D_DZDZ)
+      !$acc kernels
       DO K=0,KBAR
          DO J=0,JBAR
             DO I=0,IBAR
@@ -314,9 +324,13 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
             ENDDO
          ENDDO
       ENDDO
+      !$acc end kernels
+      !$acc end data
       !$OMP END PARALLEL DO
 
       !$OMP PARALLEL DO PRIVATE(DIV_DIFF_HEAT_FLUX) SCHEDULE(STATIC)
+      !$acc data copyin(KBAR,JBAR,IBAR,H_RHO_D_DZDX,H_RHO_D_DZDY,H_RHO_D_DZDZ,RDX,RDY,RDZ,RRN), copyout(DP)
+      !$acc kernels
       DO K=1,KBAR
          DO J=1,JBAR
             DO I=1,IBAR
@@ -330,11 +344,15 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
             ENDDO
          ENDDO
       ENDDO
+      !$acc end kernels
+      !$acc end data
       !$OMP END PARALLEL DO
 
       ! Compute div rho*D grad Z_n
 
       !$OMP PARALLEL DO SCHEDULE(STATIC)
+      !$acc data copyin(KBAR,JBAR,IBAR,RHO_D_DZDX,RHO_D_DZDY,RHO_D_DZDZ,RDX,RDY,RDZ,RRN), copyout(DEL_RHO_D_DEL_Z)
+      !$acc kernels
       DO K=1,KBAR
          DO J=1,JBAR
             DO I=1,IBAR
@@ -344,6 +362,8 @@ SPECIES_GT_1_IF: IF (N_TOTAL_SCALARS>1) THEN
             ENDDO
          ENDDO
       ENDDO
+      !$acc end kernels
+      !$acc end data
       !$OMP END PARALLEL DO
 
       ! Correct rho*D_n grad Z_n and h_n*rho*D_n grad Z_n at boundaries
@@ -417,6 +437,8 @@ IF (.NOT.CONSTANT_SPECIFIC_HEAT_RATIO) THEN
    !$OMP PARALLEL PRIVATE(ZZ_GET)
    ALLOCATE(ZZ_GET(1:N_TRACKED_SPECIES))
    !$OMP DO SCHEDULE(STATIC)
+   !$acc data copyin(KBAR,JBAR,IBAR,ZZP,TMP,CP) copyout(R_H_G,ZZ_GET)
+   !$acc kernels 
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=1,IBAR
@@ -427,6 +449,8 @@ IF (.NOT.CONSTANT_SPECIFIC_HEAT_RATIO) THEN
          ENDDO
       ENDDO
    ENDDO
+   !$acc end kernels
+   !$acc end data
    !$OMP END DO
    DEALLOCATE(ZZ_GET)
    !$OMP END PARALLEL
@@ -500,6 +524,8 @@ ENDIF K_DNS_OR_LES
 
 IF (CHECK_VN .AND. .NOT.CONSTANT_SPECIFIC_HEAT_RATIO) THEN
    !$OMP PARALLEL DO SCHEDULE(STATIC)
+   !$acc data copyin(KBAR,JBAR,IBAR,CELL_INDEX,KP,CP,RHOP) copyout(D_Z_MAX)
+   !$acc kernels
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=1,IBAR
@@ -508,12 +534,16 @@ IF (CHECK_VN .AND. .NOT.CONSTANT_SPECIFIC_HEAT_RATIO) THEN
          ENDDO
       ENDDO
    ENDDO
+   !$acc end kernels
+   !$acc end data
    !$OMP END PARALLEL DO
 ENDIF
 
 ! Compute k*dT/dx, etc
 
 !$OMP PARALLEL DO PRIVATE(DTDX, DTDY, DTDZ) SCHEDULE(STATIC)
+!$acc data copyin(KBAR,JBAR,IBAR,TMP,KP,RDYN,RDXN,RDZN) copyout(KDTDX,KDTDY,KDTDZ)
+!$acc kernels
 DO K=0,KBAR
    DO J=0,JBAR
       DO I=0,IBAR
@@ -526,6 +556,8 @@ DO K=0,KBAR
       ENDDO
    ENDDO
 ENDDO
+!$acc end kernels
+!$acc end data
 !$OMP END PARALLEL DO
 
 ! Correct thermal gradient (k dT/dn) at boundaries
@@ -569,6 +601,8 @@ ENDDO CORRECTION_LOOP
 CYLINDER3: SELECT CASE(CYLINDRICAL)
 CASE(.FALSE.) CYLINDER3   ! 3D or 2D Cartesian
    !$OMP PARALLEL DO PRIVATE(DELKDELT) SCHEDULE(STATIC)
+   !$acc data copyin(KBAR,JBAR,IBAR,KDTDX,KDTDY,KDTDZ,RDX,Q,RDY,RDZ,QR) copyout(DP)
+   !$acc kernels
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=1,IBAR
@@ -579,6 +613,8 @@ CASE(.FALSE.) CYLINDER3   ! 3D or 2D Cartesian
          ENDDO
       ENDDO
    ENDDO
+   !$acc end kernels
+   !$acc end data
    !$OMP END PARALLEL DO
 CASE(.TRUE.) CYLINDER3   ! 2D Cylindrical
    DO K=1,KBAR
@@ -629,6 +665,8 @@ ENDIF CONST_GAMMA_IF_1
 IF (CONSTANT_SPECIFIC_HEAT_RATIO) THEN
 
    !$OMP PARALLEL DO SCHEDULE(STATIC)
+   !$acc data copyin(KBAR,JBAR,IBAR,CELL_INDEX,PRESSURE_ZONE,R_PBAR), copyout(RTRM), copy(DP)
+   !$acc kernels
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=1,IBAR
@@ -639,11 +677,15 @@ IF (CONSTANT_SPECIFIC_HEAT_RATIO) THEN
         ENDDO
       ENDDO
    ENDDO
+   !$acc end kernels
+   !$acc end data
    !$OMP END PARALLEL DO
 
 ELSE
 
    !$OMP PARALLEL DO SCHEDULE(STATIC)
+   !$acc data copyin(KBAR,JBAR,IBAR,CELL_INDEX,R_H_G,RHOP), copyout(RTRM), copy(DP)
+   !$acc kernels
    DO K=1,KBAR
       DO J=1,JBAR
          DO I=1,IBAR
@@ -653,6 +695,8 @@ ELSE
          ENDDO
       ENDDO
    ENDDO
+   !$acc end kernels
+   !$acc end data
    !$OMP END PARALLEL DO
 
 ENDIF
@@ -667,7 +711,7 @@ CONST_GAMMA_IF_2: IF (.NOT.CONSTANT_SPECIFIC_HEAT_RATIO) THEN
 
       SM  => SPECIES_MIXTURE(N)
       !$OMP PARALLEL DO PRIVATE(H_S) SCHEDULE(guided)
-
+      
       DO K=1,KBAR
          DO J=1,JBAR
             DO I=1,IBAR

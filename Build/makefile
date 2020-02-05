@@ -334,6 +334,15 @@ mpi_pgi_linux_64 : obj = fds_mpi_pgi_Opteron64
 mpi_pgi_linux_64 : $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
 
+mpi_pgi_openacc_linux_64 : FFLAGS = -fast -acc -Mstandard $(GITINFOPGI)
+mpi_pgi_openacc_linux_64 : FCOMPL = mpifort
+mpi_pgi_openacc_linux_64 : LFLAGS  = -fast -acc -byteswapio -Bstatic -lc -lgcc_eh
+mpi_pgi_openacc_linux_64 : obj = fds_mpi_pgi_acc
+mpi_pgi_openacc_linux_64 : $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
+
+
+
 #AIX, JUMP, MPI-Version
 mpi_xlf_aix : FFLAGS  = -O2 -q64 -qtune=auto -qarch=auto $(GITINFOXLF)
 mpi_xlf_aix : FCOMPL  = mpxlf90
